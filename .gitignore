@@ -1,0 +1,36 @@
+# Environnement virtuel
+.venv/
+venv/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Fichiers temporaires
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Fichiers système
+.DS_Store
+.vscode/
+
+# macOS metadata
+__MACOSX/
+._*
+
+*Zone.Identifier
+
+# LaTeX temporary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.toc
+*.synctex.gz
+*.nav
+*.snm
