@@ -1,0 +1,172 @@
+\documentclass[a4paper,11pt]{article}
+
+% --------------------------------------------------
+% Packages
+% --------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+\usepackage[
+    backend=biber,
+    style=numeric,
+    natbib=true
+]{biblatex}
+\addbibresource{references.bib}
+
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\usepackage{graphicx}
+\graphicspath{{./images/}}
+
+\usepackage{caption}
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+\usepackage{titlesec}
+
+\renewcommand{\thesection}{\Alph{section}}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {Part \thesection\ ---}
+  {0.5em}
+  {}
+
+\usepackage{float}
+\usepackage{placeins}
+
+\widowpenalty=10000
+\clubpenalty=10000
+
+% --------------------------------------------------
+% Title
+% --------------------------------------------------
+\title{
+    \textbf{Reinforcement Learning}\\
+    \large Project: Cloud Auto-Scaling with Deep Reinforcement Learning
+}
+
+\author{
+    Loïc Thin \\
+    Jonas Keller\\
+}
+
+\date{\today}
+
+% --------------------------------------------------
+% Document
+% --------------------------------------------------
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+
+% ==================================================
+\section{Understand the system and establish baselines}
+% ==================================================
+\subsection{Dynamics of server startup and scale-down}
+The given environment consists of two parts: the server management and the request processing.
+
+\subsection{MDP formalization}
+We model the problem with the MDP $\mathcal{M} = \left(\mathcal{S}, \mathcal{A}, P, R, \gamma \right)$.
+At time step $t$, the state $s_t \in \mathcal{S}$ is defined by
+\begin{equation*}
+    s_t = \left(
+        n_t, q_t, d_t, d_{t-1},
+        \sin(\theta_t), \cos(\theta_t),
+        p_{1,t}, \ldots, p_{K,t}
+    \right)
+\end{equation*}
+where the individual components are as follows:
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Component} & \textbf{Description} \\
+        \hline
+        $n_t$ & Normalized number of active servers. \\
+        $q_t$ & Normalized queue length. \\
+        $d_t$ & Current normalized incoming demand. \\
+        $d_{t-1}$ & Previous normalized incoming demand. \\
+        $\sin(\theta_t), \cos(\theta_t)$ & Periodic encoding of the time of day. \\
+        $p_{k,t}$ & Normalized number of pending servers with $k$ steps remaining. \\
+        \hline
+    \end{tabular}
+    \caption{Components of the state representation.}
+    \label{tab:state_components}
+\end{table}
+
+\noindent
+The action space is given by $\mathcal{A} = \{0,1,2\}$ with the following semantics
+\begin{table}[H]
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Action code} & \textbf{Description} \\
+        \hline
+        0 & Remove one active server \\
+        1 & Hold \\
+        2 & Start one server \\
+        \hline
+    \end{tabular}
+    \caption{Semantics of the action codes.}
+    \label{tab:action_codes}
+\end{table}
+
+Next, we can formalize the transition mechanisms. Starting from a state $s_t \in \mathcal{S}$, by performing an action $a_t \in \mathcal{A}$, we can describe the next state $s_{t+1}$ or rather its conditional probability distribution $P(s_{t+1}|s_t,a_t)$.
+The transition itself consists of three mechanisms that contribute to the resulting next state.
+
+Firstly, there are the action-dependent updates. The number of active servers and pending servers changes according to the selected action and the deterministic startup process.
+It starts by decreasing the remaining steps for each pending server.
+This means that we get
+\begin{equation*}
+    p_{k-1,t+1} = p_{k,t}\text{,}\quad k\in {2, ... K} \\
+\end{equation*}
+which simply shifts the normalized number of pending servers by one to the next lower count of remaining steps.
+
+The pending servers $p_{1,t}$, which previously only needed one more time step, are now added to the active servers from the previous step, resulting in
+\begin{equation*}
+    n_{t+1} = n_t + p_{1,t} - \begin{cases}
+        1 / N_{max}\text{,}\quad \text{if} \quad a_t=0 \\
+        0\text{,}\quad \text{otherwise} 
+    \end{cases}
+\end{equation*}
+where $N_{max}$ is a hyperparameter denoting the maximum number of servers available to our application.
+
+In addition to that, we subtract one active server if $a_t=0$  or add one pending server with the full $K$ steps remaining to the pending server list if $a_t = 2$ (and both are valid actions).
+This yields
+\begin{equation*}
+    p_{K,t+1} = \begin{cases}
+        1\text{,}\quad \text{if} \quad a_t=2 \\
+        0\text{,}\quad \text{otherwise} 
+    \end{cases}
+\end{equation*}
+
+Secondly, fixed, rule-based system dynamics evolve the queue according to the incoming demand and the current server capacity.
+Therefore, $q_{t+1}$ only depends on $n_{t+1}$, $q_t$ and $d_{t+1}$ and is updated as follows
+\begin{equation*}
+    q_{t+1} = 
+\end{equation*}
+
+
+
+\end{document}
