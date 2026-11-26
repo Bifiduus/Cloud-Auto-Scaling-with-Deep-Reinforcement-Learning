@@ -167,6 +167,191 @@ Therefore, $q_{t+1}$ only depends on $n_{t+1}$, $q_t$ and $d_{t+1}$ and is updat
     q_{t+1} = 
 \end{equation*}
 
+% ==================================================
+\subsection{Evaluation of fixed-capacity and reactive-threshold policies}
+% ==================================================
 
+We evaluate the two supplied non-learning policies using three workload
+profiles: \texttt{daily}, \texttt{volatile} and \texttt{shifted\_peak}.
+For each profile, the policies are evaluated over 10 episodes using common
+random seeds. This paired evaluation makes the comparison more reliable,
+since each policy is exposed to the same set of episode seeds.
+
+The first policy, \texttt{fixed5}, maintains a fixed capacity of five active
+servers. It provides a simple reference point, but it cannot adapt its
+capacity to changes in demand. The second policy, \texttt{threshold}, is the
+provided reactive-threshold controller. Unlike the fixed policy, it adjusts
+the number of servers according to the observed system conditions.
+
+We also implement a stronger non-learning baseline, named
+\texttt{personal}. It uses a three-observation moving average of the total
+observed demand, defined as incoming arrivals plus the current queue length.
+It applies two distinct thresholds to avoid reacting identically to demand
+increases and decreases:
+\begin{itemize}
+    \item The scale-up threshold is set to $0.8$. A new server is requested
+    when the moving average exceeds $0.8$ times the available capacity.
+    Available capacity accounts for both active and pending servers.
+    Consequently, the controller does not request additional servers when
+    enough capacity is already starting up.
+    \item The scale-down threshold is set to $0.35$. An active server is
+    removed when the moving average falls below $0.35$ times the capacity
+    of the active servers, provided that the minimum server constraint is
+    respected.
+\end{itemize}
+If neither condition is met, the controller keeps the current configuration.
+The use of separate upper and lower thresholds introduces hysteresis, while
+the moving average reduces sensitivity to short-lived demand fluctuations.
+Taking pending servers into account when scaling up also avoids redundant
+server-start requests. This policy therefore combines a simple traffic-trend
+smoother, hysteresis and pending-server awareness, without using learning.
+
+\subsection{Reward and operational metrics}
+% ==================================================
+
+A higher reward alone does not necessarily indicate a better autoscaling
+policy. The reward is an aggregate objective, whereas cost, drop rate and
+the number of configuration switches describe distinct operational aspects
+of the system. We therefore report the reward together with these raw
+metrics. All values below are means and standard deviations over 10 episodes.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lrrrr}
+        \toprule
+        \textbf{Policy} &
+        \textbf{Reward} &
+        \textbf{Cost} &
+        \textbf{Drop rate} &
+        \textbf{Switches} \\
+        \midrule
+        fixed5 &
+        $-109.49 \ (4.49)$ &
+        $86.26 \ (0.00)$ &
+        $0.01276 \ (0.00279)$ &
+        $2.00 \ (0.00)$ \\
+        threshold &
+        $-67.72 \ (2.20)$ &
+        $67.68 \ (2.22)$ &
+        $0.00000 \ (0.00000)$ &
+        $29.70 \ (5.00)$ \\
+        personal &
+        $\mathbf{-63.81} \ (2.27)$ &
+        $\mathbf{63.32} \ (2.47)$ &
+        $0.00000 \ (0.00000)$ &
+        $\mathbf{17.40} \ (2.06)$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Evaluation results on the daily workload profile.}
+    \label{tab:daily_baselines}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lrrrr}
+        \toprule
+        \textbf{Policy} &
+        \textbf{Reward} &
+        \textbf{Cost} &
+        \textbf{Drop rate} &
+        \textbf{Switches} \\
+        \midrule
+        fixed5 &
+        $-107.52 \ (10.60)$ &
+        $86.26 \ (0.00)$ &
+        $0.01170 \ (0.00660)$ &
+        $2.00 \ (0.00)$ \\
+        threshold &
+        $-71.20 \ (3.13)$ &
+        $70.23 \ (2.83)$ &
+        $0.00000 \ (0.00000)$ &
+        $82.70 \ (11.93)$ \\
+        personal &
+        $\mathbf{-67.71} \ (3.95)$ &
+        $\mathbf{64.50} \ (2.70)$ &
+        $0.00029 \ (0.00044)$ &
+        $\mathbf{47.30} \ (9.60)$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Evaluation results on the volatile workload profile.}
+    \label{tab:volatile_baselines}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{lrrrr}
+        \toprule
+        \textbf{Policy} &
+        \textbf{Reward} &
+        \textbf{Cost} &
+        \textbf{Drop rate} &
+        \textbf{Switches} \\
+        \midrule
+        fixed5 &
+        $-111.53 \ (4.43)$ &
+        $86.26 \ (0.00)$ &
+        $0.01404 \ (0.00290)$ &
+        $2.00 \ (0.00)$ \\
+        threshold &
+        $-67.98 \ (1.64)$ &
+        $67.95 \ (1.63)$ &
+        $0.00000 \ (0.00000)$ &
+        $31.10 \ (4.59)$ \\
+        personal &
+        $\mathbf{-64.32} \ (2.09)$ &
+        $\mathbf{63.56} \ (2.21)$ &
+        $0.00000 \ (0.00000)$ &
+        $\mathbf{19.90} \ (1.92)$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Evaluation results on the shifted-peak workload profile.}
+    \label{tab:shifted_peak_baselines}
+\end{table}
+
+The results show that \texttt{fixed5} performs substantially worse in terms
+of reward and cost than the adaptive policies. Its fixed capacity cannot
+adjust to the workload, and it also exhibits non-zero request drop rates
+on all three profiles. Although it performs only two configuration switches
+per episode, this low number should not be interpreted as better control:
+it is a consequence of keeping a fixed capacity rather than adapting to
+demand.
+
+The \texttt{personal} controller obtains a better mean reward than
+\texttt{threshold} on all three workload profiles. Since rewards are
+negative, a value closer to zero is better. The improvement is accompanied
+by a lower mean cost: approximately $6.4\%$ on \texttt{daily},
+$8.2\%$ on \texttt{volatile} and $6.5\%$ on \texttt{shifted\_peak},
+relative to \texttt{threshold}. Thus, the higher reward is not obtained
+by spending more resources.
+
+The number of configuration switches is also lower for
+\texttt{personal} in every profile: it decreases from $29.7$ to $17.4$
+on \texttt{daily}, from $82.7$ to $47.3$ on \texttt{volatile}, and from
+$31.1$ to $19.9$ on \texttt{shifted\_peak}. This is consistent with the
+intended effect of the moving average and hysteresis, which reduce
+unnecessary reactions to short-term variations in demand.
+
+Regarding service quality, both adaptive policies have a zero mean drop
+rate on the \texttt{daily} and \texttt{shifted\_peak} profiles. On the
+\texttt{volatile} profile, \texttt{personal} has a small non-zero mean
+drop rate of $0.00029$ (approximately $0.029\%$), while
+\texttt{threshold} has no observed drops. This is a slight degradation
+that should not be hidden by the reward improvement. Its practical
+acceptability depends on the service-level constraint imposed on request
+losses; the evaluation results alone do not define such an acceptable
+threshold. The reported standard deviation of the drop rate for
+\texttt{personal} on this profile is $0.00044$, which also indicates
+variability between episodes.
+
+Overall, the custom \texttt{personal} baseline provides the best balance
+among the tested non-learning policies: it consistently improves reward
+and reduces cost and configuration switches compared with the supplied
+reactive-threshold policy. The only observed operational disadvantage is
+the very small drop rate on the volatile workload. This result should
+therefore be considered alongside the application's acceptable request-loss
+limit, rather than relying on reward alone.
 
 \end{document}
