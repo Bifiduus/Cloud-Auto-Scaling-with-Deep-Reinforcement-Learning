@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 SCENARIOS = ("daily", "volatile", "shifted_peak")
-POLICIES = ("fixed5", "threshold")
+POLICIES = ("fixed5", "threshold", "personal")
 METRICS = ("reward", "cost", "drop_rate", "switches")
 REQUIRED_COLUMNS = {"policy", "scenario", "seed", *METRICS}
 
@@ -21,7 +21,8 @@ def load_results(path: Path, scenario: str) -> list[dict]:
         reader = csv.DictReader(file)
         missing = REQUIRED_COLUMNS - set(reader.fieldnames or ())
         if missing:
-            raise ValueError(f"{path} is missing columns: {', '.join(sorted(missing))}")
+            raise ValueError(
+                f"{path} is missing columns: {', '.join(sorted(missing))}")
 
         rows = []
         for row in reader:
@@ -52,7 +53,11 @@ def print_comparison(rows: list[dict]) -> None:
             policy: {row["seed"] for row in policy_rows}
             for policy, policy_rows in grouped.items()
         }
-        matched = bool(seed_sets["fixed5"]) and seed_sets["fixed5"] == seed_sets["threshold"]
+        matched = (
+            bool(seed_sets["fixed5"])
+            and seed_sets["fixed5"] == seed_sets["threshold"]
+            and seed_sets["fixed5"] == seed_sets["personal"]
+        )
         print(f"\n{scenario} — seeds communes: {'oui' if matched else 'NON'}")
         print("baseline   episodes   reward mean (std)   cost mean (std)   "
               "drop rate mean (std)   switches mean (std)")
@@ -74,8 +79,7 @@ def print_comparison(rows: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Summarize existing evaluate.py CSV outputs; writes no files."
-    )
+        description="Summarize existing evaluate.py CSV outputs; writes no files.")
     parser.add_argument(
         "--input-dir",
         type=Path,

@@ -60,9 +60,9 @@ No working DQN, no replay buffer, no training script, no pretrained weights, no 
 ## Useful commands
 
 ```bash
-python scripts/evaluate.py --scenario daily --episodes 10 --output results_daily.csv
-python scripts/evaluate.py --scenario volatile --episodes 10 --output results_volatile.csv
-python scripts/evaluate.py --scenario shifted_peak --episodes 10 --output results_shifted.csv
+python scripts/evaluate.py --scenario daily --episodes 10 --output baseline_daily.csv
+python scripts/evaluate.py --scenario volatile --episodes 10 --output baseline_volatile.csv
+python scripts/evaluate.py --scenario shifted_peak --episodes 10 --output baseline_shifted_peak.csv
 ```
 
 When csv files are built with the previous commands, we can do the following command from 'cloud_autoscaling/' :

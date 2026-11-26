@@ -1,5 +1,6 @@
 """Evaluate provided non-learning policies with matched workload seeds."""
 from __future__ import annotations
+
 import argparse
 import csv
 import sys
@@ -8,8 +9,8 @@ from pathlib import Path
 # Allow running via `python scripts/evaluate.py` from the repository root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cloud_scaling import CloudAutoScalingEnv, CloudConfig
-from cloud_scaling.baselines import FixedCapacityPolicy, ThresholdPolicy, RandomPolicy
+from cloud_scaling.baselines import PersonalPolicy, FixedCapacityPolicy, ThresholdPolicy, RandomPolicy  # noqa: E402
+from cloud_scaling import CloudAutoScalingEnv, CloudConfig  # noqa: E402
 
 
 def rollout(env, policy, seed: int):
@@ -33,8 +34,14 @@ def rollout(env, policy, seed: int):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", choices=["daily", "volatile", "shifted_peak"], default="daily")
-    parser.add_argument("--episodes", type=int, default=5)
+    parser.add_argument(
+        "--scenario",
+        choices=[
+            "daily",
+            "volatile",
+            "shifted_peak"],
+        default="daily")
+    parser.add_argument("--episodes", type=int, default=10)
     parser.add_argument("--output", default="baseline_results.csv")
     args = parser.parse_args()
     if args.episodes <= 0:
@@ -42,11 +49,14 @@ def main():
     env = CloudAutoScalingEnv(CloudConfig(scenario=args.scenario))
     rows = []
     for name, policy in [
+        ("personal", PersonalPolicy(env)),
         ("fixed5", FixedCapacityPolicy(env, servers=5)),
         ("threshold", ThresholdPolicy(env)),
         ("random", RandomPolicy(seed=2026)),
     ]:
         for episode in range(args.episodes):
+            if name == "personal":
+                policy.reset()
             result = rollout(env, policy, seed=1000 + episode)
             rows.append({"policy": name, "scenario": args.scenario, **result})
     with open(args.output, "w", newline="", encoding="utf-8") as f:
